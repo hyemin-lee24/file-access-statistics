@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="crypto_audit">
+
+	<insert id="insertFileAccessLog" parameterType="com.example.stats.model.FileAccessLog">
+		INSERT INTO file_access_log_${tag} (
+			user_id,
+			policy_id,
+			file_path,
+			access_type,
+			access_result,
+			fail_reason,
+			access_time,
+			device_code
+		)
+		VALUES (
+			#{userId},
+			#{policyId},
+			#{filePath},
+			#{accessType},
+			#{accessResult},
+			#{failReason},
+			#{accessTime},
+			#{deviceCode}
+	   )
+	</insert>
+	
+	<select id="selectFileAccessLogs" parameterType="String" resultType="com.example.stats.model.FileAccessLog">
+		SELECT * FROM file_access_log_${tag} ORDER BY agent_id, exe_time
+	</select>
+	
+	<delete id="clearFileAccessLog">
+		DELETE FROM file_access_log_${table}
+	</delete>
+	
+	<delete id="clearAggregationTable">
+		DELETE FROM file_access_log_agg_${table}
+	</delete>
+	
+</mapper>
