@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="file_access">
+
+	<update id="mergeFileAccessStats" parameterType="String">
+		MERGE INTO file_access_agg_${tag} A
+			USING (
+				SELECT
+					EXTRACT(DAY FROM access_time) AS "day",
+					EXTRACT(HOUR FROM access_time) AS "hour",
+					user_id, device_code, policy_id,
+					COALESCE(fail_reason, 'NONE') AS fail_reason,
+					CASE
+						WHEN file_path IS NULL THEN 'NONE'
+						ELSE SUBSTRING(file_path, 1, LENGTH(file_path) - LOCATE('/', REVERSE(file_path)))
+						END AS dir_path,
+					CASE
+						WHEN file_path IS NULL THEN 'NONE'
+						ELSE CASE
+								 WHEN LENGTH(SUBSTRING(file_path, LOCATE('.', file_path) + 1)) >
+									  LENGTH(SUBSTRING(file_path, LOCATE('/', REVERSE(file_path)) + 1))
+									 THEN 'EMPTY'
+								 ELSE SUBSTRING(file_path, LOCATE('.', file_path) + 1)
+							END
+						END AS file_ext,
+					COUNT(CASE WHEN access_type = 'UPLOAD' AND access_result = 'SUCCESS' THEN 1 END) AS upload_success,
+					COUNT(CASE WHEN access_type = 'DOWNLOAD' AND access_result = 'SUCCESS' THEN 1 END) AS download_success,
+					COUNT(CASE WHEN access_type = 'UPLOAD' AND access_result = 'FAIL' THEN 1 END) AS upload_fail,
+					COUNT(CASE WHEN access_type = 'DOWNLOAD' AND access_result = 'FAIL' THEN 1 END) AS download_fail
+				FROM file_access_log_${tag}
+				GROUP BY "day", "hour", user_id, device_code, policy_id, fail_reason, file_path
+			) B
+			ON (
+					A."day" = B."day" AND A."hour" = B."hour" AND A.user_id = B.user_id AND
+					A.device_code = B.device_code AND A.policy_id = B.policy_id AND
+					A.fail_reason = B.fail_reason AND A.dir_path = B.dir_path AND A.file_ext = B.file_ext
+				)
+			WHEN MATCHED THEN
+				UPDATE SET
+					upload_success = B.upload_success,
+					download_success = B.download_success,
+					upload_fail = B.upload_fail,
+					download_fail = B.download_fail
+			WHEN NOT MATCHED THEN
+				INSERT (
+						"day", "hour", user_id, device_code, policy_id, fail_reason, dir_path, file_ext,
+						upload_success, download_success, upload_fail, download_fail
+					) VALUES (
+								 B."day", B."hour", B.user_id, B.device_code, B.policy_id, B.fail_reason, B.dir_path, B.file_ext,
+								 B.upload_success, B.download_success, B.upload_fail, B.download_fail
+							 )
+	</update>
+	
+	<insert id="createFileAccessLogTable" parameterType="String">
+		CREATE TABLE IF NOT EXISTS file_access_log_${tag} (
+			user_id       VARCHAR(30),
+			policy_id     VARCHAR(128),
+			file_path     VARCHAR(500),
+			access_type   VARCHAR(10),
+			access_result VARCHAR(1),
+			fail_reason   VARCHAR(100),
+			access_time   TIMESTAMP,
+			device_code   VARCHAR(40)
+		);
+	</insert>
+	
+	<insert id="createFileAccessAggTable" parameterType="String">
+		CREATE TABLE IF NOT EXISTS file_access_agg_${tag} (
+			"day"            INT,
+			"hour"           INT,
+			user_id          VARCHAR(30),
+			device_code      VARCHAR(40),
+			policy_id        VARCHAR(128),
+			fail_reason      VARCHAR(100),
+			dir_path         VARCHAR(500),
+			file_ext         VARCHAR(30),
+			upload_success   INT DEFAULT 0,
+			download_success INT DEFAULT 0,
+			upload_fail      INT DEFAULT 0,
+			download_fail    INT DEFAULT 0,
+			PRIMARY KEY ("day", "hour", user_id, device_code, policy_id, fail_reason, dir_path, file_ext)
+		)
+	</insert>
+	
+</mapper>
