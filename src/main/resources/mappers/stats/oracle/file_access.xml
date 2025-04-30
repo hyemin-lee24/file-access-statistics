@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 
-<mapper namespace="crypto_audit">
+<mapper namespace="file_access">
 
 	<update id="mergeFileAccessStats" parameterType="String">
 		MERGE INTO file_access_agg_${tag} A
@@ -46,7 +46,7 @@
 							   B.upload_success, B.download_success, B.upload_fail, B.download_fail)
 	</update>
 	
-	<insert id="createAccessLogTable" parameterType="String">
+	<insert id="createFileAccessLogTable" parameterType="String">
 		BEGIN
 			EXECUTE IMMEDIATE 
 			'CREATE TABLE file_access_log_${tag} (
@@ -67,7 +67,7 @@
 		END;	
 	</insert>
 	
-	<insert id="createAggregationTable" parameterType="String">
+	<insert id="createFileAccessAggTable" parameterType="String">
 		BEGIN
 			EXECUTE IMMEDIATE 
 			'CREATE TABLE file_access_agg_${tag} (
