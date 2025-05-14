@@ -68,5 +68,9 @@ public class FileAccessLog {
 		cal.setTime(accessTime);
 		return cal.get(Calendar.HOUR_OF_DAY);
 	}
+
+	public String getTag() {
+		return new AuditTag(accessTime).toString();
+	}
 }
 
